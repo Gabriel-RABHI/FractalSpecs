@@ -1,3 +1,4 @@
+using FractalSpecs.Agent.Outputs.Tools;
 using FractalSpecs.AgentImplementation.Contracts;
 using Microsoft.Extensions.AI;
 using System;
@@ -28,6 +29,22 @@ namespace FractalSpecs.AgentImplementation.Tools.Grep
             return AIFunctionFactory.Create(SearchAsync, ToolKey, Description);
         }
 
+        private bool IsPathAllowed(string targetPath, IEnumerable<string> readPaths)
+        {
+            var fullTargetPath = Path.GetFullPath(targetPath);
+            foreach (var rp in readPaths)
+            {
+                var fullRp = Path.GetFullPath(rp);
+                if (fullTargetPath.Equals(fullRp, StringComparison.OrdinalIgnoreCase) || 
+                    fullTargetPath.StartsWith(fullRp.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar) + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase) ||
+                    fullTargetPath.StartsWith(fullRp.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar) + Path.AltDirectorySeparatorChar, StringComparison.OrdinalIgnoreCase))
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
         [Description("Search file contents using regex patterns. Uses native C# search.")]
         public async Task<string> SearchAsync(
             [Description("Regex pattern to search for")] string pattern,
@@ -37,8 +54,25 @@ namespace FractalSpecs.AgentImplementation.Tools.Grep
             [Description("Lines of context around matches")] int context_lines = 0,
             [Description("Maximum number of results (default: 250)")] int max_results = 250)
         {
+            var outputInfo = new GrepToolCallOutput(pattern, path, glob, case_insensitive, context_lines, max_results);
             var workingDirectory = _parent.ReadPaths.FirstOrDefault() ?? "c:/";
-            var searchPath = path == "." ? workingDirectory : Path.GetFullPath(path, workingDirectory);
+
+            var pathsToSearch = new List<string>();
+            if (string.IsNullOrWhiteSpace(path) || path == ".")
+            {
+                pathsToSearch.AddRange(_parent.ReadPaths);
+            }
+            else
+            {
+                var explicitPath = Path.GetFullPath(path, workingDirectory);
+                if (!IsPathAllowed(explicitPath, _parent.ReadPaths))
+                {
+                    outputInfo.ErrorMessage = $"Error: Path '{explicitPath}' is not authorized by ReadPaths scope.";
+                    _parent.OwnerAgent?.PublishHistoryPart(outputInfo);
+                    return outputInfo.ErrorMessage;
+                }
+                pathsToSearch.Add(explicitPath);
+            }
 
             try
             {
@@ -46,18 +80,29 @@ namespace FractalSpecs.AgentImplementation.Tools.Grep
                 var regex = new Regex(pattern, regexOptions);
 
                 var filesToSearch = new List<string>();
-                if (File.Exists(searchPath))
+                
+                foreach (var sp in pathsToSearch)
                 {
-                    filesToSearch.Add(searchPath);
+                    if (File.Exists(sp))
+                    {
+                        filesToSearch.Add(sp);
+                    }
+                    else if (Directory.Exists(sp))
+                    {
+                        filesToSearch.AddRange(EnumerateFilesSafe(sp, glob, workingDirectory));
+                    }
+                    else
+                    {
+                        if (pathsToSearch.Count == 1)
+                        {
+                            outputInfo.ErrorMessage = $"Error: Path '{sp}' does not exist.";
+                            _parent.OwnerAgent?.PublishHistoryPart(outputInfo);
+                            return outputInfo.ErrorMessage;
+                        }
+                    }
                 }
-                else if (Directory.Exists(searchPath))
-                {
-                    filesToSearch.AddRange(EnumerateFilesSafe(searchPath, glob));
-                }
-                else
-                {
-                    return $"Error: Path '{searchPath}' does not exist.";
-                }
+                
+                filesToSearch = filesToSearch.Distinct().ToList();
 
                 var results = new List<string>();
                 int matchCount = 0;
@@ -66,6 +111,8 @@ namespace FractalSpecs.AgentImplementation.Tools.Grep
                 {
                     if (matchCount >= max_results) break;
                     
+                    if (!IsPathAllowed(file, _parent.ReadPaths)) continue; // Double check each file
+
                     string[] lines;
                     try
                     {
@@ -104,25 +151,105 @@ namespace FractalSpecs.AgentImplementation.Tools.Grep
                     }
                 }
 
+                outputInfo.MatchCount = matchCount;
+
                 if (matchCount == 0)
-                    return $"No matches for pattern '{pattern}' in {searchPath}";
+                {
+                    outputInfo.ResultOutput = $"No matches for pattern '{pattern}' in {string.Join(", ", pathsToSearch)}";
+                    _parent.OwnerAgent?.PublishHistoryPart(outputInfo);
+                    return outputInfo.ResultOutput;
+                }
 
                 var truncated = matchCount >= max_results;
-                var output = string.Join("\n", results);
+                var outputStr = string.Join("\n", results);
 
                 var header = truncated
                     ? $"Showing first {max_results} matches (truncated):"
                     : $"Found {matchCount} match(es):";
 
-                return $"{header}\n{output}";
+                string finalOutput = $"{header}\n{outputStr}";
+                outputInfo.ResultOutput = finalOutput;
+                _parent.OwnerAgent?.PublishHistoryPart(outputInfo);
+                return finalOutput;
             }
             catch (Exception ex)
             {
-                return $"Error: Grep error: {ex.Message}";
+                outputInfo.ErrorMessage = $"Error: Grep error: {ex.Message}";
+                _parent.OwnerAgent?.PublishHistoryPart(outputInfo);
+                return outputInfo.ErrorMessage;
             }
         }
 
-        private IEnumerable<string> EnumerateFilesSafe(string rootPath, string? glob)
+        private class GitIgnoreChecker
+        {
+            private List<Regex> _rules = new List<Regex>();
+            private string _baseDir;
+
+            public GitIgnoreChecker(string rootDir)
+            {
+                _baseDir = Path.GetFullPath(rootDir).Replace('\\', '/');
+                if (!_baseDir.EndsWith("/")) _baseDir += "/";
+
+                string gitignorePath = Path.Combine(rootDir, ".gitignore");
+                if (File.Exists(gitignorePath))
+                {
+                    try
+                    {
+                        var lines = File.ReadAllLines(gitignorePath);
+                        foreach (var line in lines)
+                        {
+                            var trimmed = line.Trim();
+                            if (string.IsNullOrWhiteSpace(trimmed) || trimmed.StartsWith("#") || trimmed.StartsWith("!")) 
+                                continue; 
+
+                            string pattern = trimmed.Replace('\\', '/');
+                            bool startsWithSlash = pattern.StartsWith("/");
+                            if (startsWithSlash) pattern = pattern.Substring(1);
+
+                            pattern = Regex.Escape(pattern).Replace("\\*", ".*").Replace("\\?", ".");
+
+                            if (startsWithSlash)
+                            {
+                                pattern = "^" + pattern;
+                            }
+                            else
+                            {
+                                pattern = "(^|/)" + pattern;
+                            }
+
+                            if (!trimmed.EndsWith("/") && !trimmed.EndsWith("*"))
+                            {
+                                pattern = pattern + "($|/)"; 
+                            }
+
+                            _rules.Add(new Regex(pattern, RegexOptions.IgnoreCase));
+                        }
+                    }
+                    catch { }
+                }
+            }
+
+            public bool IsIgnored(string absolutePath)
+            {
+                if (_rules.Count == 0) return false;
+                
+                string normalized = Path.GetFullPath(absolutePath).Replace('\\', '/');
+                string relative = normalized;
+                
+                if (normalized.StartsWith(_baseDir, StringComparison.OrdinalIgnoreCase))
+                {
+                    relative = normalized.Substring(_baseDir.Length);
+                }
+
+                foreach (var rule in _rules)
+                {
+                    if (rule.IsMatch(relative)) return true;
+                }
+                return false;
+            }
+        }
+
+        private IEnumerable<string> EnumerateFilesSafe(string rootPath, string? glob, string workingDirectory)
         {
             var queue = new Queue<string>();
             queue.Enqueue(rootPath);
@@ -136,6 +263,17 @@ namespace FractalSpecs.AgentImplementation.Tools.Grep
                 
                 string pattern = "^" + Regex.Escape(cleanGlob).Replace("\\*", ".*").Replace("\\?", ".") + "$";
                 globRegex = new Regex(pattern, RegexOptions.IgnoreCase);
+            }
+
+            var gitIgnoreCheckers = new List<GitIgnoreChecker>();
+            if (Directory.Exists(workingDirectory))
+            {
+                gitIgnoreCheckers.Add(new GitIgnoreChecker(workingDirectory));
+            }
+
+            if (!Path.GetFullPath(rootPath).Equals(Path.GetFullPath(workingDirectory), StringComparison.OrdinalIgnoreCase))
+            {
+                gitIgnoreCheckers.Add(new GitIgnoreChecker(rootPath));
             }
 
             while (queue.Count > 0)
@@ -152,6 +290,17 @@ namespace FractalSpecs.AgentImplementation.Tools.Grep
                     continue;
                 }
 
+                bool dirIgnored = false;
+                foreach (var checker in gitIgnoreCheckers)
+                {
+                    if (checker.IsIgnored(currentDir + "/"))
+                    {
+                        dirIgnored = true;
+                        break;
+                    }
+                }
+                if (dirIgnored) continue;
+
                 string[]? files = null;
                 try
                 {
@@ -163,6 +312,17 @@ namespace FractalSpecs.AgentImplementation.Tools.Grep
                 {
                     foreach (var file in files)
                     {
+                        bool fileIgnored = false;
+                        foreach (var checker in gitIgnoreCheckers)
+                        {
+                            if (checker.IsIgnored(file))
+                            {
+                                fileIgnored = true;
+                                break;
+                            }
+                        }
+                        if (fileIgnored) continue;
+
                         if (globRegex == null || globRegex.IsMatch(Path.GetFileName(file)))
                         {
                             yield return file;
