@@ -1,3 +1,5 @@
 <Solution>
+  <Project Path="FractalSpecs.CodingAgent/FractalSpecs.CodingAgent.csproj" Id="7341d2ac-a472-470b-bd57-51fc156a765c" />
+  <Project Path="FractalSpecs.ConsoleCodingAgent/FractalSpecs.ConsoleCodingAgent.csproj" Id="38a9d80d-2b70-41bd-a38b-97c4234e0f71" />
   <Project Path="FractalSpecs/FractalSpecs.csproj" />
 </Solution>
