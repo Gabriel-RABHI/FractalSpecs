@@ -1,4 +1,5 @@
 <Solution>
+  <Project Path="FractalSpecs.Agent.Tests/FractalSpecs.Agent.Tests.csproj" Id="dc817f2a-ba6d-4e93-98e0-408faba7e76d" />
   <Project Path="FractalSpecs.CodingAgent/FractalSpecs.Agent.csproj" Id="7341d2ac-a472-470b-bd57-51fc156a765c" />
   <Project Path="FractalSpecs.ConsoleCodingAgent/FractalSpecs.ConsoleCodingAgent.csproj" Id="38a9d80d-2b70-41bd-a38b-97c4234e0f71" />
   <Project Path="FractalSpecs/FractalSpecs.csproj" />
