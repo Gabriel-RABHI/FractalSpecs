@@ -1,9 +1,9 @@
-﻿using FractalSpecs.CodingAgent.Contracts;
+﻿using FractalSpecs.AgentImplementation.Contracts;
 using System;
 using System.Collections.Generic;
 using System.Text;
 
-namespace FractalSpecs.CodingAgent.Tools.Grep
+namespace FractalSpecs.AgentImplementation.Tools.Grep
 {
     public class GrepToolConfiguration : IToolConfiguration
     {

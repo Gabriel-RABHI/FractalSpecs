@@ -1,6 +1,6 @@
-﻿using FractalSpecs.CodingAgent.Contracts;
+﻿using FractalSpecs.AgentImplementation.Contracts;
 
-namespace FractalSpecs.CodingAgent.Configuration
+namespace FractalSpecs.AgentImplementation.Configuration
 {
     public class GoogleProviderConfiguration : IModelProviderConfiguration
     {

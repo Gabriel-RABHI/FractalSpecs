@@ -1,7 +1,7 @@
-﻿using FractalSpecs.CodingAgent.Configuration;
-using FractalSpecs.CodingAgent.Contracts;
+﻿using FractalSpecs.AgentImplementation.Configuration;
+using FractalSpecs.AgentImplementation.Contracts;
 
-namespace FractalSpecs.CodingAgent
+namespace FractalSpecs.AgentImplementation
 {
     public class AgentOptions
     {

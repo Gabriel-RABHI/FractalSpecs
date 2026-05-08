@@ -1,9 +1,9 @@
 ﻿using System.Collections.Concurrent;
 
-namespace FractalSpecs.CodingAgent.Contracts
+namespace FractalSpecs.AgentImplementation.Contracts
 {
     public interface IAgentListenerClient
     {
-        void HistoryUpdated(Agent agent, List<IAgentHistoryPart> newHistoryParts, bool end);
+        void HistoryUpdated(GenericAgent agent, List<IAgentHistoryPart> newHistoryParts, bool end);
     }
 }

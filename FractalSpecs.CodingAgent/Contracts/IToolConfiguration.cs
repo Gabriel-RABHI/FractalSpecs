@@ -1,4 +1,4 @@
-﻿namespace FractalSpecs.CodingAgent.Contracts
+﻿namespace FractalSpecs.AgentImplementation.Contracts
 {
     public interface IToolConfiguration
     {
