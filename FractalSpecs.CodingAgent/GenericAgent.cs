@@ -52,6 +52,10 @@ namespace FractalSpecs.AgentImplementation
             try
             {
                 PublishHistoryPart(new ClientPromptOutput(prompt, _options.ModelProvider.ProviderName, _options.ModelProvider.ModelProviderKey));
+                
+                bool isThinkingMode = false;
+                string tagBuffer = "";
+
                 await foreach (var chunk in _agent.RunStreamingAsync(prompt))
                 {
                     // 1. Extract reasoning / thinking content from the delta
@@ -103,15 +107,137 @@ namespace FractalSpecs.AgentImplementation
                         PublishHistoryPart(reasoningOutput);
                     }
 
-                    // 2. Extract regular text
+                    // 2. Extract regular text and parse inline legacy tags
                     var chunkText = chunk.Text;
                     if (!string.IsNullOrEmpty(chunkText))
                     {
-                        var output = new FractalSpecs.Agent.Outputs.TextOutput(chunkText);
-                        PublishHistoryPart(output);
+                        tagBuffer += chunkText;
+
+                        while (tagBuffer.Length > 0)
+                        {
+                            if (!isThinkingMode)
+                            {
+                                int thinkIdx = tagBuffer.IndexOf("<think>");
+                                int reasonIdx = tagBuffer.IndexOf("<reasoning>");
+                                int minIdx = -1;
+                                string tag = "";
+
+                                if (thinkIdx != -1) { minIdx = thinkIdx; tag = "<think>"; }
+                                if (reasonIdx != -1 && (minIdx == -1 || reasonIdx < minIdx)) { minIdx = reasonIdx; tag = "<reasoning>"; }
+
+                                if (minIdx != -1)
+                                {
+                                    string textToPublish = tagBuffer.Substring(0, minIdx);
+                                    if (!string.IsNullOrEmpty(textToPublish))
+                                        PublishHistoryPart(new FractalSpecs.Agent.Outputs.TextOutput(textToPublish));
+                                    
+                                    isThinkingMode = true;
+                                    tagBuffer = tagBuffer.Substring(minIdx + tag.Length);
+                                }
+                                else
+                                {
+                                    int partialIdx = tagBuffer.LastIndexOf('<');
+                                    if (partialIdx != -1 && ("<reasoning>".StartsWith(tagBuffer.Substring(partialIdx)) || "<think>".StartsWith(tagBuffer.Substring(partialIdx))))
+                                    {
+                                        string textToPublish = tagBuffer.Substring(0, partialIdx);
+                                        if (!string.IsNullOrEmpty(textToPublish))
+                                            PublishHistoryPart(new FractalSpecs.Agent.Outputs.TextOutput(textToPublish));
+                                        tagBuffer = tagBuffer.Substring(partialIdx);
+                                        break;
+                                    }
+                                    else
+                                    {
+                                        PublishHistoryPart(new FractalSpecs.Agent.Outputs.TextOutput(tagBuffer));
+                                        tagBuffer = "";
+                                    }
+                                }
+                            }
+                            else
+                            {
+                                int thinkIdx = tagBuffer.IndexOf("</think>");
+                                int reasonIdx = tagBuffer.IndexOf("</reasoning>");
+                                int minIdx = -1;
+                                string tag = "";
+
+                                if (thinkIdx != -1) { minIdx = thinkIdx; tag = "</think>"; }
+                                if (reasonIdx != -1 && (minIdx == -1 || reasonIdx < minIdx)) { minIdx = reasonIdx; tag = "</reasoning>"; }
+
+                                if (minIdx != -1)
+                                {
+                                    string textToPublish = tagBuffer.Substring(0, minIdx);
+                                    if (!string.IsNullOrEmpty(textToPublish))
+                                        PublishHistoryPart(new FractalSpecs.Agent.Outputs.ThinkingOutput(textToPublish));
+                                    
+                                    isThinkingMode = false;
+                                    tagBuffer = tagBuffer.Substring(minIdx + tag.Length);
+                                }
+                                else
+                                {
+                                    int partialIdx = tagBuffer.LastIndexOf('<');
+                                    if (partialIdx != -1 && ("</reasoning>".StartsWith(tagBuffer.Substring(partialIdx)) || "</think>".StartsWith(tagBuffer.Substring(partialIdx))))
+                                    {
+                                        string textToPublish = tagBuffer.Substring(0, partialIdx);
+                                        if (!string.IsNullOrEmpty(textToPublish))
+                                            PublishHistoryPart(new FractalSpecs.Agent.Outputs.ThinkingOutput(textToPublish));
+                                        tagBuffer = tagBuffer.Substring(partialIdx);
+                                        break;
+                                    }
+                                    else
+                                    {
+                                        PublishHistoryPart(new FractalSpecs.Agent.Outputs.ThinkingOutput(tagBuffer));
+                                        tagBuffer = "";
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    // 3. Extract usage statistics if present
+                    if (chunk.RawRepresentation != null)
+                    {
+                        var rawType = chunk.RawRepresentation.GetType();
+                        var usageProp = rawType.GetProperty("Usage");
+                        if (usageProp != null)
+                        {
+                            var usageObj = usageProp.GetValue(chunk.RawRepresentation);
+                            if (usageObj != null)
+                            {
+                                var usageType = usageObj.GetType();
+                                var promptProp = usageType.GetProperty("InputTokenCount") ?? usageType.GetProperty("PromptTokens");
+                                var completionProp = usageType.GetProperty("OutputTokenCount") ?? usageType.GetProperty("CompletionTokens");
+                                var totalProp = usageType.GetProperty("TotalTokenCount") ?? usageType.GetProperty("TotalTokens");
+                                
+                                int promptTokens = (int?)promptProp?.GetValue(usageObj) ?? 0;
+                                int completionTokens = (int?)completionProp?.GetValue(usageObj) ?? 0;
+                                int totalTokens = (int?)totalProp?.GetValue(usageObj) ?? 0;
+                                
+                                int reasoningTokens = 0;
+                                var detailsProp = usageType.GetProperty("OutputTokenDetails");
+                                if (detailsProp != null)
+                                {
+                                    var detailsObj = detailsProp.GetValue(usageObj);
+                                    if (detailsObj != null)
+                                    {
+                                        var rProp = detailsObj.GetType().GetProperty("ReasoningTokenCount");
+                                        reasoningTokens = (int?)rProp?.GetValue(detailsObj) ?? 0;
+                                    }
+                                }
+
+                                if (totalTokens > 0)
+                                {
+                                    PublishHistoryPart(new FractalSpecs.Agent.Outputs.StatisticsOutput(promptTokens, completionTokens, totalTokens, reasoningTokens));
+                                }
+                            }
+                        }
                     }
                 }
                 
+                if (!string.IsNullOrEmpty(tagBuffer))
+                {
+                    if (isThinkingMode) PublishHistoryPart(new FractalSpecs.Agent.Outputs.ThinkingOutput(tagBuffer));
+                    else PublishHistoryPart(new FractalSpecs.Agent.Outputs.TextOutput(tagBuffer));
+                }
+
                 _client.HistoryUpdated(this, new List<IAgentHistoryPart>(), true);
             }
             finally
