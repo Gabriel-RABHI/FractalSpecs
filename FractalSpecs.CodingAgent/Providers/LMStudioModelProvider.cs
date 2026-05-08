@@ -10,7 +10,7 @@ namespace FractalSpecs.CodingAgent.Providers
     {
         public ChatClient GetChatClient(LMStudioProviderConfiguration configuration)
         {
-
+            throw new NotImplementedException();
         }
     }
 }

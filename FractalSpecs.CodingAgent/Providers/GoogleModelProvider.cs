@@ -7,7 +7,7 @@ namespace FractalSpecs.CodingAgent.Providers
     {
         public ChatClient GetChatClient(GoogleProviderConfiguration configuration)
         {
-
+            throw new NotImplementedException();
         }
     }
 }

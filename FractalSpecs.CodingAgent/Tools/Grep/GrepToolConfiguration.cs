@@ -7,13 +7,13 @@ namespace FractalSpecs.CodingAgent.Tools.Grep
 {
     public class GrepToolConfiguration : IToolConfiguration
     {
-        private CodingAgentOptions _parent;
+        private AgentOptions _parent;
 
         public string ToolKey => "Grep";
 
         public string Description => "Search file contents using regex patterns. Uses ripgrep for fast, recursive search.";
 
-        public GrepToolConfiguration(CodingAgentOptions parentOptions)
+        public GrepToolConfiguration(AgentOptions parentOptions)
         {
             _parent = parentOptions;
         }

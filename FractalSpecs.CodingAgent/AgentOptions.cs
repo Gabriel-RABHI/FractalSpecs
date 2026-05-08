@@ -3,7 +3,7 @@ using FractalSpecs.CodingAgent.Contracts;
 
 namespace FractalSpecs.CodingAgent
 {
-    public class CodingAgentOptions
+    public class AgentOptions
     {
         public IModelProviderConfiguration ModelProvider { get; set; } = new LMStudioProviderConfiguration();
 
