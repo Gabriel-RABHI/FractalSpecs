@@ -5,6 +5,8 @@ namespace FractalSpecs.AgentImplementation
 {
     public class AgentOptions
     {
+        public GenericAgent OwnerAgent { get; internal set; }
+
         public IModelProviderConfiguration ModelProvider { get; set; } = new LMStudioProviderConfiguration();
 
         public List<string> ReadPaths { get; set; } = new List<string> { "c:/" };

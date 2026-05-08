@@ -22,6 +22,8 @@ namespace FractalSpecs.AgentImplementation
             _options = options;
             _client = client;
 
+            _options.OwnerAgent = this;
+
             ChatClient chatClient;
             if (options.ModelProvider is Configuration.LMStudioProviderConfiguration lmConfig)
             {
@@ -36,9 +38,12 @@ namespace FractalSpecs.AgentImplementation
                 throw new NotSupportedException($"Model provider type {options.ModelProvider.GetType().Name} is not supported.");
             }
 
+            var tools = options.Tools?.Select(t => t.CreateTool()).ToList();
+
             _agent = chatClient.AsAIAgent(
                 name: "CodingAgent",
-                instructions: options.SystemPrompt
+                instructions: options.SystemPrompt,
+                tools: tools
             );
         }
 
@@ -234,8 +239,10 @@ namespace FractalSpecs.AgentImplementation
                 
                 if (!string.IsNullOrEmpty(tagBuffer))
                 {
-                    if (isThinkingMode) PublishHistoryPart(new FractalSpecs.Agent.Outputs.ThinkingOutput(tagBuffer));
-                    else PublishHistoryPart(new FractalSpecs.Agent.Outputs.TextOutput(tagBuffer));
+                    if (isThinkingMode)
+                        PublishHistoryPart(new FractalSpecs.Agent.Outputs.ThinkingOutput(tagBuffer));
+                    else
+                        PublishHistoryPart(new FractalSpecs.Agent.Outputs.TextOutput(tagBuffer));
                 }
 
                 _client.HistoryUpdated(this, new List<IAgentHistoryPart>(), true);
@@ -246,7 +253,7 @@ namespace FractalSpecs.AgentImplementation
             }
         }
 
-        private void PublishHistoryPart(IAgentHistoryPart output)
+        internal void PublishHistoryPart(IAgentHistoryPart output)
         {
             _outputs.Enqueue(output);
             _client.HistoryUpdated(this, new List<IAgentHistoryPart> { output }, false);
