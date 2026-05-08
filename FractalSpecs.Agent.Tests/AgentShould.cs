@@ -40,6 +40,7 @@ namespace FractalSpecs.Agent.Tests
                 Thread.Sleep(100);
 
             Assert.True(client.HistoryParts.Count > 5);
+            var thinking = string.Concat(client.HistoryParts.Select(h => h is ThinkingOutput ? (((ThinkingOutput)h).Text) : ""));
             var aggr = string.Concat(client.HistoryParts.Select(h => h is TextOutput ? (((TextOutput)h).Text) : ""));
             Console.WriteLine(aggr);
             Assert.True(client.IsEnd);

@@ -54,7 +54,57 @@ namespace FractalSpecs.AgentImplementation
                 PublishHistoryPart(new ClientPromptOutput(prompt, _options.ModelProvider.ProviderName, _options.ModelProvider.ModelProviderKey));
                 await foreach (var chunk in _agent.RunStreamingAsync(prompt))
                 {
-                    var chunkText = chunk.ToString();
+                    // 1. Extract reasoning / thinking content from the delta
+                    string reasoningPart = "";
+
+                    // Helper to extract reasoning from an enumerable of contents
+                    void ExtractReasoning(System.Collections.IEnumerable contents)
+                    {
+                        if (contents == null) return;
+                        foreach (var item in contents)
+                        {
+                            if (item == null) continue;
+                            var itemType = item.GetType();
+                            
+                            // If type name contains Reasoning
+                            if (itemType.Name.Contains("Reasoning"))
+                            {
+                                var textProp = itemType.GetProperty("Text") ?? itemType.GetProperty("Reasoning") ?? itemType.GetProperty("Content");
+                                if (textProp != null)
+                                    reasoningPart += textProp.GetValue(item)?.ToString();
+                            }
+                            // Or if the item itself has a property named Reasoning
+                            else
+                            {
+                                var rProp = itemType.GetProperty("Reasoning");
+                                if (rProp != null)
+                                    reasoningPart += rProp.GetValue(item)?.ToString();
+                            }
+                        }
+                    }
+
+                    if (chunk.Contents != null)
+                    {
+                        ExtractReasoning(chunk.Contents);
+                    }
+                    
+                    if (string.IsNullOrEmpty(reasoningPart) && chunk.RawRepresentation != null)
+                    {
+                        var contentsProp = chunk.RawRepresentation.GetType().GetProperty("Contents");
+                        if (contentsProp != null)
+                        {
+                            ExtractReasoning(contentsProp.GetValue(chunk.RawRepresentation) as System.Collections.IEnumerable);
+                        }
+                    }
+
+                    if (!string.IsNullOrEmpty(reasoningPart))
+                    {
+                        var reasoningOutput = new FractalSpecs.Agent.Outputs.ThinkingOutput(reasoningPart);
+                        PublishHistoryPart(reasoningOutput);
+                    }
+
+                    // 2. Extract regular text
+                    var chunkText = chunk.Text;
                     if (!string.IsNullOrEmpty(chunkText))
                     {
                         var output = new FractalSpecs.Agent.Outputs.TextOutput(chunkText);
