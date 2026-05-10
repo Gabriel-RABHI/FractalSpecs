@@ -4,12 +4,12 @@ namespace FractalSpecs.Agent.Outputs
 {
     public class StatisticsOutput : IAgentHistoryPart
     {
-        public int PromptTokens { get; }
-        public int CompletionTokens { get; }
-        public int TotalTokens { get; }
-        public int ReasoningTokens { get; }
+        public long PromptTokens { get; }
+        public long CompletionTokens { get; }
+        public long TotalTokens { get; }
+        public long ReasoningTokens { get; }
 
-        public StatisticsOutput(int promptTokens, int completionTokens, int totalTokens, int reasoningTokens)
+        public StatisticsOutput(long promptTokens, long completionTokens, long totalTokens, long reasoningTokens)
         {
             PromptTokens = promptTokens;
             CompletionTokens = completionTokens;
