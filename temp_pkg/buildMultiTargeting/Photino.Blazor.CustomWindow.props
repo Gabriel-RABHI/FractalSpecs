@@ -1,0 +1,3 @@
+﻿<Project>
+  <Import Project="..\build\Photino.Blazor.CustomWindow.props" />
+</Project>

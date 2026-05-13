@@ -1,0 +1,25 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2013/05/nuspec.xsd">
+  <metadata>
+    <id>Photino.Blazor.CustomWindow</id>
+    <version>1.3.1</version>
+    <title>Photino.Blazor.CustomWindow</title>
+    <authors>Andersen27</authors>
+    <license type="expression">MIT</license>
+    <licenseUrl>https://licenses.nuget.org/MIT</licenseUrl>
+    <icon>customwindow.png</icon>
+    <readme>README.md</readme>
+    <projectUrl>https://github.com/Andersen27/Photino.Blazor.CustomWindow</projectUrl>
+    <description>Customizable window view and behaviour implementation for Photino.Blazor applications with Chromeless mode</description>
+    <tags>photino blazor custom window customwindow customizable chromeless header</tags>
+    <repository type="git" url="https://github.com/Andersen27/Photino.Blazor.CustomWindow" commit="1596a9b174db58798e57787ec4159869566a4c9c" />
+    <dependencies>
+      <group targetFramework="net7.0">
+        <dependency id="Photino.Blazor" version="3.1.10" exclude="Build,Analyzers" />
+      </group>
+      <group targetFramework="net8.0">
+        <dependency id="Photino.Blazor" version="3.1.10" exclude="Build,Analyzers" />
+      </group>
+    </dependencies>
+  </metadata>
+</package>
