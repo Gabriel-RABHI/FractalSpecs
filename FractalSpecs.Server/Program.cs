@@ -1,8 +1,11 @@
 using FractalSpecs.Server.Components;
+using FractalSpecs.App.Services;
+using FractalSpecs.Server.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
+builder.Services.AddSingleton<IWindowHost, WebWindowHost>();
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 
