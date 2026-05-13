@@ -4,4 +4,7 @@
   <Project Path="FractalSpecs.ConsoleCodingAgent/FractalSpecs.ConsoleCodingAgent.csproj" Id="38a9d80d-2b70-41bd-a38b-97c4234e0f71" />
   <Project Path="FractalSpecs/FractalSpecs.csproj" />
   <Project Path="OpenMono.Cli/OpenMono.Cli.csproj" />
+  <Project Path="FractalSpecs.App/FractalSpecs.App.csproj" />
+  <Project Path="FractalSpecs.Desktop/FractalSpecs.Desktop.csproj" />
+  <Project Path="FractalSpecs.Server/FractalSpecs.Server.csproj" />
 </Solution>
