@@ -1,8 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using Photino.Blazor;
+using Photino.Blazor.CustomWindow.Extensions;
 using FractalSpecs.App.Components;
-using FractalSpecs.App.Services;
-using FractalSpecs.Desktop.Services;
 
 namespace FractalSpecs.Desktop;
 
@@ -14,17 +13,13 @@ class Program
         var appBuilder = PhotinoBlazorAppBuilder.CreateDefault(args);
 
         appBuilder.Services.AddLogging();
-        appBuilder.Services.AddSingleton<DesktopWindowHost>();
-        appBuilder.Services.AddSingleton<IWindowHost>(sp => sp.GetRequiredService<DesktopWindowHost>());
+        appBuilder.Services.AddCustomWindow();
 
         // Register root component and selector
-        appBuilder.RootComponents.Add<FractalSpecs.App.Components.Routes>("#app");
+        appBuilder.RootComponents.Add<App>("#app");
         appBuilder.RootComponents.Add<Microsoft.AspNetCore.Components.Web.HeadOutlet>("head::after");
 
         var app = appBuilder.Build();
-
-        // Initialize Window Host
-        app.Services.GetRequiredService<DesktopWindowHost>().Window = app.MainWindow;
 
         // Customize window
         app.MainWindow

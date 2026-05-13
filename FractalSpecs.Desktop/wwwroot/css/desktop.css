@@ -1,0 +1,39 @@
+/* Force the window content to span the entire height and start at the top */
+.pb-custom-window-content {
+    top: 0 !important;
+    height: 100vh !important;
+    z-index: 0;
+}
+
+/* Ensure the title bar and controls float above the content */
+.pb-custom-window-drag-area, 
+.pb-custom-window-header, 
+.pb-custom-window-controls, 
+.pb-custom-window-icon {
+    z-index: 1000 !important;
+}
+
+/* Make the title bar background transparent so the app shows through */
+:root {
+    --pb-custom-window-main-color: transparent;
+    --pb-custom-window-main-unfocused-color: transparent;
+    --pb-custom-window-background-color: transparent;
+    --pb-custom-window-controls-background: transparent;
+    --pb-custom-window-controls-color: #fff;
+}
+
+/* Give controls a subtle hover effect if desired */
+.pb-custom-window-control-button:hover {
+    background-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+.pb-custom-window-close-button:hover {
+    background-color: #e81123 !important;
+}
+
+/* Adjust title to look more integrated */
+.pb-custom-window-title {
+    color: #fff !important;
+    font-size: 0.85rem !important;
+    font-weight: bold;
+}

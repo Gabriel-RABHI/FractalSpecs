@@ -1,9 +1,6 @@
 @inherits LayoutComponentBase
-@inject FractalSpecs.App.Services.IWindowHost WindowHost
 
-<TitleBar />
-
-<div class="page @(WindowHost.IsDesktop ? "desktop-mode" : "")">
+<div class="page">
     <div class="sidebar">
         <NavMenu />
     </div>

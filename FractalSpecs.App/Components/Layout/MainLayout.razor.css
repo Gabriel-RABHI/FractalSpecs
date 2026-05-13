@@ -4,10 +4,6 @@
     flex-direction: column;
 }
 
-.page.desktop-mode {
-    padding-top: 32px;
-}
-
 main {
     flex: 1;
 }
@@ -62,19 +58,10 @@ main {
         top: 0;
     }
 
-    .page.desktop-mode .sidebar {
-        height: calc(100vh - 32px);
-        top: 32px;
-    }
-
     .top-row {
         position: sticky;
         top: 0;
         z-index: 1;
-    }
-
-    .page.desktop-mode .top-row {
-        top: 32px;
     }
 
     .top-row.auth ::deep a:first-child {
